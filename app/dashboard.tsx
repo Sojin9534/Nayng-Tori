@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bone, CalendarDays, Camera, ChevronRight, Droplets, HeartPulse, Home, LogOut, PawPrint, Pencil, Plus, Scale, Share2, Sparkles, Utensils, Waves } from "lucide-react";
+import { Bone, Camera, ChevronRight, Droplets, HeartPulse, LogOut, PawPrint, Pencil, Plus, Scale, Share2, Sparkles, Utensils, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -77,12 +77,17 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
 
   async function saveProfile(formData: FormData) {
     setSaving(true);
-    const response = await fetch("/api/cat", { method: "PATCH", body: formData });
-    setSaving(false);
-    if (!response.ok) return toast.error((await response.json()).error ?? "기본 정보를 저장하지 못했어요.");
-    setProfileOpen(false);
-    toast.success("기본 정보를 바꿨어요.");
-    window.location.reload();
+    try {
+      const response = await fetch("/api/cat", { method: "PATCH", body: formData });
+      if (!response.ok) return toast.error((await response.json()).error ?? "기본 정보를 저장하지 못했어요.");
+      setProfileOpen(false);
+      toast.success("기본 정보를 바꿨어요.");
+      window.location.reload();
+    } catch {
+      toast.error("연결이 불안정해요. 다시 눌러주세요.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function togglePublic(entry: AlbumView, isPublic: boolean) {
@@ -122,15 +127,15 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
     <div className="app-shell">
       <Toaster position="top-center" richColors />
       <aside className="desktop-sidebar">
-        <a className="brand" href="/" aria-label="냥로그 홈"><span className="brand-mark"><PawPrint /></span><span>냥로그</span></a>
-        <nav aria-label="주요 메뉴"><a className="nav-item active" href="#today"><Home />오늘</a><a className="nav-item" href="#records"><CalendarDays />기록</a><a className="nav-item" href="#album"><Camera />성장앨범</a></nav>
+        <a className="brand" href="/" aria-label="냥토리 홈"><span className="brand-mark"><img src="/tori-mascot.png" alt="" /></span><span>냥토리</span></a>
+        <nav aria-label="주요 메뉴"><a className="nav-item active" href="#today"><img className="nav-mascot-icon" src="/icon-today.png" alt="" />오늘</a><a className="nav-item" href="#records"><img className="nav-mascot-icon" src="/icon-records.png" alt="" />기록</a><a className="nav-item" href="#album"><img className="nav-mascot-icon" src="/icon-album.png" alt="" />성장앨범</a></nav>
         <div className="sidebar-foot"><div className="mini-profile"><img src={data.cat.imageUrl} alt={data.cat.name} /><div><strong>{data.cat.name}</strong><span>{data.cat.breed}</span></div></div><a className="signout" href={signOutPath} target="_top"><LogOut />로그아웃</a></div>
       </aside>
 
       <main className="main-content">
-        <header className="mobile-head"><a className="brand" href="/"><span className="brand-mark"><PawPrint /></span><span>냥로그</span></a><Button variant="outline" size="icon" onClick={copyShareLink} aria-label="성장앨범 공유"><Share2 /></Button></header>
+        <header className="mobile-head"><a className="brand" href="/"><span className="brand-mark"><img src="/tori-mascot.png" alt="" /></span><span>냥토리</span></a><Button variant="outline" size="icon" onClick={copyShareLink} aria-label="성장앨범 공유"><img className="header-share-icon" src="/icon-share.png" alt="" /></Button></header>
         <section id="today" className="welcome-row"><div><span className="eyebrow">{formatDate(new Date().toISOString())}</span><h1>{data.cat.name}의 오늘</h1><p>{userName} 집사님, 오늘 기록을 남겨주세요.</p></div><Button className="share-button" onClick={copyShareLink}><Share2 />앨범 공유</Button></section>
-        <section className="pet-hero"><img src={data.cat.imageUrl} alt={`${data.cat.name} 대표 사진`} /><div className="pet-hero-copy"><span className="pet-pill"><Sparkles />{ageLabel(data.cat.birth_date)}</span><h2>{data.cat.name}</h2><p>{data.cat.bio}</p><Dialog open={profileOpen} onOpenChange={setProfileOpen}><DialogTrigger asChild><Button className="profile-edit-button" variant="outline"><Pencil />기본 정보 수정</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>기본 정보 수정</DialogTitle><DialogDescription>저장하면 공개 성장앨범에도 바로 반영돼요.</DialogDescription></DialogHeader><form action={saveProfile} className="form-stack"><label>대표 사진<Input name="photo" type="file" accept="image/*" /></label><label>이름<Input name="name" defaultValue={data.cat.name} maxLength={30} required /></label><label>생일<Input name="birthDate" type="date" defaultValue={data.cat.birth_date} required /></label><label>품종<Input name="breed" defaultValue={data.cat.breed} maxLength={50} required /></label><label>소개<Input name="bio" defaultValue={data.cat.bio} maxLength={160} required /></label><Button disabled={saving} type="submit">{saving ? "저장 중" : "변경사항 저장"}</Button></form></DialogContent></Dialog><div className="streak"><span>이번 주 기록</span><strong>5일</strong><div className="streak-dots">{[1,2,3,4,5,6,7].map((d) => <i className={d < 6 ? "filled" : ""} key={d} />)}</div></div></div></section>
+        <section className="pet-hero"><img src={data.cat.imageUrl} alt={`${data.cat.name} 대표 사진`} /><div className="pet-hero-copy"><span className="pet-pill"><Sparkles />{ageLabel(data.cat.birth_date)}</span><h2>{data.cat.name}</h2><p>{data.cat.bio}</p><Dialog open={profileOpen} onOpenChange={setProfileOpen}><DialogTrigger asChild><Button className="profile-edit-button" variant="outline"><Pencil />기본 정보 수정</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>기본 정보 수정</DialogTitle><DialogDescription>저장하면 공개 성장앨범에도 바로 반영돼요.</DialogDescription></DialogHeader><form noValidate onSubmit={(event) => { event.preventDefault(); void saveProfile(new FormData(event.currentTarget)); }} className="form-stack"><label>대표 사진<Input name="photo" type="file" accept="image/*" /></label><label>이름<Input name="name" defaultValue={data.cat.name} maxLength={30} /></label><label>생일<Input name="birthDate" type="date" defaultValue={data.cat.birth_date} /></label><label>품종<Input name="breed" defaultValue={data.cat.breed} maxLength={50} /></label><label>소개<Input name="bio" defaultValue={data.cat.bio} maxLength={160} /></label><Button disabled={saving} type="submit">{saving ? "저장 중" : "변경사항 저장"}</Button></form></DialogContent></Dialog><div className="streak"><span>이번 주 기록</span><strong>5일</strong><div className="streak-dots">{[1,2,3,4,5,6,7].map((d) => <i className={d < 6 ? "filled" : ""} key={d} />)}</div></div></div></section>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <section className="quick-section"><div className="section-heading"><div><span className="eyebrow">QUICK LOG</span><h2>빠른 기록</h2></div><DialogTrigger asChild><Button variant="outline"><Plus />직접 입력</Button></DialogTrigger></div><div className="quick-grid">{(Object.keys(logMeta) as Array<keyof typeof logMeta>).slice(0, 6).map((type) => { const meta = logMeta[type]; const Icon = meta.icon; return <DialogTrigger asChild key={type}><button className="quick-card" onClick={() => setSelectedType(type)}><span className="quick-icon" style={{ background: `${meta.color}1e`, color: meta.color }}><Icon /></span><span>{meta.label}</span><strong>{summary(type)}</strong><ChevronRight /></button></DialogTrigger>; })}</div></section>
@@ -143,7 +148,7 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
           <TabsContent value="album" id="album"><div className="album-toolbar"><p>공개 스위치를 켠 사진만 친구에게 보여요.</p><Dialog open={photoOpen} onOpenChange={setPhotoOpen}><DialogTrigger asChild><Button><Camera />사진 추가</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>성장앨범에 추가</DialogTitle><DialogDescription>사진과 그날의 기억을 함께 남겨주세요.</DialogDescription></DialogHeader><form action={savePhoto} className="form-stack"><label>사진<Input name="photo" type="file" accept="image/*" /></label><label>촬영일<Input name="takenAt" type="date" defaultValue={today} required /></label><label>한 줄 기록<Input name="caption" required placeholder="오늘의 기억" /></label><label>기념일<Input name="milestone" placeholder="예: 첫 캠핑" /></label><label className="switch-row"><span>친구에게 공개</span><Switch name="isPublic" value="true" defaultChecked /></label><Button disabled={saving} type="submit">{saving ? "올리는 중" : "앨범에 추가"}</Button></form></DialogContent></Dialog></div><div className="album-grid">{data.album.map((entry) => <article className="album-card" key={entry.id}><div className="album-image"><img src={entry.imageUrl} alt={entry.caption} />{entry.milestone && <span>{entry.milestone}</span>}</div><div className="album-info"><time>{entry.taken_at.replaceAll("-", ".")}</time><h3>{entry.caption}</h3><label className="switch-row"><span>{entry.is_public ? "공개 중" : "나만 보기"}</span><Switch checked={Boolean(entry.is_public)} onCheckedChange={(checked) => togglePublic(entry, checked)} /></label></div></article>)}</div></TabsContent>
         </Tabs>
       </main>
-      <nav className="mobile-nav" aria-label="모바일 메뉴"><a href="#today" className="active"><Home /><span>오늘</span></a><a href="#records"><CalendarDays /><span>기록</span></a><button onClick={() => { setSelectedType("meal"); setDialogOpen(true); }}><span className="nav-add"><Plus /></span><span>기록하기</span></button><a href="#album"><Camera /><span>앨범</span></a><a href="/album/tori"><Share2 /><span>공개보기</span></a></nav>
+      <nav className="mobile-nav" aria-label="모바일 메뉴"><a href="#today" className="active"><img className="nav-mascot-icon" src="/icon-today.png" alt="" /><span>오늘</span></a><a href="#records"><img className="nav-mascot-icon" src="/icon-records.png" alt="" /><span>기록</span></a><button onClick={() => { setSelectedType("meal"); setDialogOpen(true); }}><span className="nav-add"><img src="/icon-add.png" alt="" /></span><span>기록하기</span></button><a href="#album"><img className="nav-mascot-icon" src="/icon-album.png" alt="" /><span>앨범</span></a><a href="/album/tori"><img className="nav-mascot-icon" src="/icon-share.png" alt="" /><span>공개보기</span></a></nav>
     </div>
   );
 }
