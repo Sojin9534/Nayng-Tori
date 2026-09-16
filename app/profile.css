@@ -1,0 +1,12 @@
+.profile-edit-button {
+  width: max-content;
+  margin-top: 14px;
+  border-color: #ffffff55;
+  background: #ffffff14;
+  color: #fff;
+}
+
+.profile-edit-button:hover {
+  background: #fff;
+  color: #274957;
+}
