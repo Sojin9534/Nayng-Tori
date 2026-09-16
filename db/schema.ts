@@ -7,6 +7,7 @@ export const cats = sqliteTable("cats", {
   birthDate: text("birth_date").notNull(),
   breed: text("breed").notNull().default("브리티시 숏헤어"),
   bio: text("bio").notNull().default(""),
+  profileImageKey: text("profile_image_key"),
   shareSlug: text("share_slug").notNull().unique(),
   createdAt: text("created_at").notNull(),
 });
