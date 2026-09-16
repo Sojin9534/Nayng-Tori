@@ -1,0 +1,2 @@
+CREATE INDEX `idx_album_entries_cat_public_date` ON `album_entries` (`cat_id`,`is_public`,`taken_at`);--> statement-breakpoint
+CREATE INDEX `idx_life_logs_cat_time` ON `life_logs` (`cat_id`,`occurred_at`);
