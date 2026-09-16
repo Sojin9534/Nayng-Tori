@@ -15,6 +15,13 @@
       "when": 1789552211794,
       "tag": "0001_empty_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789557589662,
+      "tag": "0002_smart_james_howlett",
+      "breakpoints": true
     }
   ]
 }
