@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
+@import "./profile.css";
 
 :root{--background:#f7f8f6;--foreground:#243238;--card:#fff;--card-foreground:#243238;--popover:#fff;--popover-foreground:#243238;--primary:#284b59;--primary-foreground:#fff;--secondary:#edf3f2;--secondary-foreground:#284b59;--muted:#eef1ef;--muted-foreground:#68777b;--accent:#f5c76b;--accent-foreground:#243238;--destructive:#cf4b55;--border:#dde5e2;--input:#d8e1de;--ring:#6e9ba6;--radius:.9rem}
 @theme inline{--color-background:var(--background);--color-foreground:var(--foreground);--color-card:var(--card);--color-card-foreground:var(--card-foreground);--color-popover:var(--popover);--color-popover-foreground:var(--popover-foreground);--color-primary:var(--primary);--color-primary-foreground:var(--primary-foreground);--color-secondary:var(--secondary);--color-secondary-foreground:var(--secondary-foreground);--color-muted:var(--muted);--color-muted-foreground:var(--muted-foreground);--color-accent:var(--accent);--color-accent-foreground:var(--accent-foreground);--color-destructive:var(--destructive);--color-border:var(--border);--color-input:var(--input);--color-ring:var(--ring);--radius-sm:calc(var(--radius) - 4px);--radius-md:calc(var(--radius) - 2px);--radius-lg:var(--radius);--radius-xl:calc(var(--radius) + 5px);--font-sans:"Pretendard","Noto Sans KR",system-ui,sans-serif}
