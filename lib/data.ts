@@ -27,37 +27,40 @@ function db() {
 
 export async function ensureCat(ownerId: string) {
   const database = db();
-  const existing = await database
+  let existing = await database
     .prepare("SELECT * FROM cats WHERE share_slug = ? LIMIT 1")
     .bind("tori")
     .first<Record<string, string>>();
-  if (existing) {
-    if (existing.owner_id === "demo-owner" && ownerId !== "demo-owner") {
-      await database
-        .prepare("UPDATE cats SET owner_id = ? WHERE id = ?")
-        .bind(ownerId, existing.id)
-        .run();
-      return { ...existing, owner_id: ownerId };
-    }
-    return existing;
+  if (!existing) {
+    await database
+      .prepare(
+        "INSERT OR IGNORE INTO cats (id, owner_id, name, birth_date, breed, bio, share_slug, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      )
+      .bind(
+        "cat-tori",
+        ownerId,
+        "토리",
+        "2026-05-11",
+        "브리티시 숏헤어",
+        "햇살과 츄르, 캠핑을 좋아하는 토리의 성장기록",
+        "tori",
+        new Date().toISOString(),
+      )
+      .run();
+    existing = await database
+      .prepare("SELECT * FROM cats WHERE share_slug = ? LIMIT 1")
+      .bind("tori")
+      .first<Record<string, string>>();
   }
 
-  const id = crypto.randomUUID();
-  await database
-    .prepare(
-      "INSERT INTO cats (id, owner_id, name, birth_date, breed, bio, share_slug, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    )
-    .bind(
-      id,
-      ownerId,
-      "토리",
-      "2026-05-11",
-      "브리티시 숏헤어",
-      "햇살과 츄르, 캠핑을 좋아하는 토리의 성장기록",
-      "tori",
-      new Date().toISOString(),
-    )
-    .run();
+  if (!existing) throw new Error("토리의 기본 정보를 만들 수 없습니다.");
+  if (existing.owner_id === "demo-owner" && ownerId !== "demo-owner") {
+    await database
+      .prepare("UPDATE cats SET owner_id = ? WHERE id = ? AND owner_id = ?")
+      .bind(ownerId, existing.id, "demo-owner")
+      .run();
+    existing = { ...existing, owner_id: ownerId };
+  }
 
   const now = new Date();
   const logs = [
@@ -70,11 +73,11 @@ export async function ensureCat(ownerId: string) {
     logs.map((log, index) =>
       database
         .prepare(
-          "INSERT INTO life_logs (id, cat_id, author_id, type, value, unit, status, memo, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT OR IGNORE INTO life_logs (id, cat_id, author_id, type, value, unit, status, memo, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(
-          crypto.randomUUID(),
-          id,
+          `seed-log-${index}`,
+          existing.id,
           ownerId,
           log[0],
           log[1],
@@ -92,11 +95,11 @@ export async function ensureCat(ownerId: string) {
     albumDates.map((date, index) =>
       database
         .prepare(
-          "INSERT INTO album_entries (id, cat_id, fallback_url, caption, taken_at, milestone, is_public, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
+          "INSERT OR IGNORE INTO album_entries (id, cat_id, fallback_url, caption, taken_at, milestone, is_public, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
         )
         .bind(
-          crypto.randomUUID(),
-          id,
+          `seed-album-${index}`,
+          existing.id,
           "/tori.png",
           captions[index],
           date,
@@ -105,7 +108,7 @@ export async function ensureCat(ownerId: string) {
         ),
     ),
   );
-  return { id, owner_id: ownerId, name: "토리", birth_date: "2026-05-11", share_slug: "tori" };
+  return existing;
 }
 
 export async function getDashboard(ownerId: string) {
@@ -136,4 +139,3 @@ export async function getPublicAlbum(slug: string) {
 export function imageUrl(entry: AlbumEntry) {
   return entry.image_key ? `/api/media/${encodeURIComponent(entry.image_key)}` : entry.fallback_url ?? "/tori.png";
 }
-
