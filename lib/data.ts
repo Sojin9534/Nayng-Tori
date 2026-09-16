@@ -20,6 +20,15 @@ export type AlbumEntry = {
   is_public: number;
 };
 
+export type CatProfile = {
+  id: string;
+  name: string;
+  birth_date: string;
+  breed: string;
+  bio: string;
+  profile_image_key: string | null;
+};
+
 function db() {
   if (!env.DB) throw new Error("기록 저장소를 사용할 수 없습니다.");
   return env.DB;
@@ -125,7 +134,7 @@ export async function getPublicAlbum(slug: string) {
   const database = db();
   if (slug === "tori") await ensureCat("demo-owner");
   const cat = await database
-    .prepare("SELECT id, name, birth_date, breed, bio, share_slug FROM cats WHERE share_slug = ? LIMIT 1")
+    .prepare("SELECT id, name, birth_date, breed, bio, profile_image_key, share_slug FROM cats WHERE share_slug = ? LIMIT 1")
     .bind(slug)
     .first<Record<string, string>>();
   if (!cat) return null;
@@ -138,4 +147,8 @@ export async function getPublicAlbum(slug: string) {
 
 export function imageUrl(entry: AlbumEntry) {
   return entry.image_key ? `/api/media/${encodeURIComponent(entry.image_key)}` : entry.fallback_url ?? "/tori.png";
+}
+
+export function catImageUrl(cat: { profile_image_key?: string | null }) {
+  return cat.profile_image_key ? `/api/media/${encodeURIComponent(cat.profile_image_key)}` : "/tori.png";
 }
