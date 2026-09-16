@@ -1,0 +1,4 @@
+import { verifyPassword } from "@/lib/message-password";
+import { env } from "cloudflare:workers";
+import { NextResponse } from "next/server";
+export async function DELETE(request: Request, context: { params: Promise<{ slug: string; id: string }> }) { const { slug, id } = await context.params; const { password } = await request.json() as { password?: string }; const row = await env.DB!.prepare("SELECT g.password_hash FROM guestbook_entries g JOIN cats ON cats.id = g.cat_id WHERE g.id = ? AND cats.share_slug = ?").bind(id, slug).first<{ password_hash: string | null }>(); if (!row || !(await verifyPassword(String(password ?? ""), row.password_hash))) return NextResponse.json({ error: "비밀번호가 맞지 않아요." }, { status: 403 }); await env.DB!.prepare("DELETE FROM guestbook_entries WHERE id = ?").bind(id).run(); return NextResponse.json({ ok: true }); }

@@ -35,3 +35,22 @@ export const albumEntries = sqliteTable("album_entries", {
   isPublic: integer("is_public", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull(),
 }, (table) => [index("idx_album_entries_cat_public_date").on(table.catId, table.isPublic, table.takenAt)]);
+
+export const albumComments = sqliteTable("album_comments", {
+  id: text("id").primaryKey(),
+  catId: text("cat_id").notNull(),
+  albumEntryId: text("album_entry_id").notNull(),
+  nickname: text("nickname").notNull(),
+  content: text("content").notNull(),
+  passwordHash: text("password_hash"),
+  createdAt: text("created_at").notNull(),
+}, (table) => [index("idx_album_comments_entry_time").on(table.albumEntryId, table.createdAt)]);
+
+export const guestbookEntries = sqliteTable("guestbook_entries", {
+  id: text("id").primaryKey(),
+  catId: text("cat_id").notNull(),
+  nickname: text("nickname").notNull(),
+  content: text("content").notNull(),
+  passwordHash: text("password_hash"),
+  createdAt: text("created_at").notNull(),
+}, (table) => [index("idx_guestbook_cat_time").on(table.catId, table.createdAt)]);

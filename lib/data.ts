@@ -20,6 +20,8 @@ export type AlbumEntry = {
   is_public: number;
 };
 
+export type PublicMessage = { id: string; nickname: string; content: string; created_at: string; album_entry_id?: string };
+
 export type CatProfile = {
   id: string;
   name: string;
@@ -123,11 +125,13 @@ export async function ensureCat(ownerId: string) {
 export async function getDashboard(ownerId: string) {
   const cat = await ensureCat(ownerId);
   if (cat.owner_id !== ownerId) throw new Error("이 고양이의 기록을 볼 권한이 없습니다.");
-  const [logs, album] = await Promise.all([
-    db().prepare("SELECT id, type, value, unit, status, memo, occurred_at FROM life_logs WHERE cat_id = ? ORDER BY occurred_at DESC LIMIT 40").bind(cat.id).all<LifeLog>(),
+  const [logs, album, comments, guestbook] = await Promise.all([
+    db().prepare("SELECT id, type, value, unit, status, memo, occurred_at FROM life_logs WHERE cat_id = ? AND type != 'pee' ORDER BY occurred_at DESC LIMIT 40").bind(cat.id).all<LifeLog>(),
     db().prepare("SELECT id, image_key, fallback_url, caption, taken_at, milestone, is_public FROM album_entries WHERE cat_id = ? ORDER BY taken_at DESC LIMIT 40").bind(cat.id).all<AlbumEntry>(),
+    db().prepare("SELECT id, album_entry_id, nickname, content, created_at FROM album_comments WHERE cat_id = ? ORDER BY created_at DESC LIMIT 100").bind(cat.id).all<PublicMessage>(),
+    db().prepare("SELECT id, nickname, content, created_at FROM guestbook_entries WHERE cat_id = ? ORDER BY created_at DESC LIMIT 100").bind(cat.id).all<PublicMessage>(),
   ]);
-  return { cat, logs: logs.results, album: album.results };
+  return { cat, logs: logs.results, album: album.results, comments: comments.results, guestbook: guestbook.results };
 }
 
 export async function getPublicAlbum(slug: string) {
@@ -138,11 +142,11 @@ export async function getPublicAlbum(slug: string) {
     .bind(slug)
     .first<Record<string, string>>();
   if (!cat) return null;
-  const album = await database
+  const [album, comments, guestbook] = await Promise.all([database
     .prepare("SELECT id, image_key, fallback_url, caption, taken_at, milestone, is_public FROM album_entries WHERE cat_id = ? AND is_public = 1 ORDER BY taken_at DESC")
     .bind(cat.id)
-    .all<AlbumEntry>();
-  return { cat, album: album.results };
+    .all<AlbumEntry>(), database.prepare("SELECT id, album_entry_id, nickname, content, created_at FROM album_comments WHERE cat_id = ? ORDER BY created_at ASC").bind(cat.id).all<PublicMessage>(), database.prepare("SELECT id, nickname, content, created_at FROM guestbook_entries WHERE cat_id = ? ORDER BY created_at DESC LIMIT 50").bind(cat.id).all<PublicMessage>()]);
+  return { cat, album: album.results, comments: comments.results, guestbook: guestbook.results };
 }
 
 export function imageUrl(entry: AlbumEntry) {

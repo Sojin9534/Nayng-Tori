@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bone, Camera, ChevronRight, Droplets, HeartPulse, LogOut, PawPrint, Pencil, Plus, Scale, Share2, Sparkles, Utensils, Waves } from "lucide-react";
+import { Bone, Camera, ChevronRight, Droplets, HeartPulse, LogOut, MessageCircle, PawPrint, Pencil, Plus, Scale, Share2, Sparkles, Trash2, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -9,19 +9,20 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import type { AlbumEntry, LifeLog } from "@/lib/data";
+import type { AlbumEntry, LifeLog, PublicMessage } from "@/lib/data";
 
 type AlbumView = AlbumEntry & { imageUrl: string };
 type DashboardData = {
   cat: { id: string; name: string; birth_date: string; breed: string; bio: string; profile_image_key: string | null; imageUrl: string };
   logs: LifeLog[];
   album: AlbumView[];
+  comments: PublicMessage[];
+  guestbook: PublicMessage[];
 };
 
 const logMeta = {
   meal: { label: "밥", icon: Utensils, color: "#ee7c66", unit: "g" },
   water: { label: "물", icon: Droplets, color: "#5aa6c8", unit: "ml" },
-  pee: { label: "소변", icon: Waves, color: "#e6ab3f", unit: "회" },
   poop: { label: "대변", icon: PawPrint, color: "#8a6b58", unit: "회" },
   weight: { label: "체중", icon: Scale, color: "#7c77bd", unit: "kg" },
   symptom: { label: "증상", icon: HeartPulse, color: "#d65b75", unit: "회" },
@@ -97,6 +98,12 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
     else toast.success(isPublic ? "친구에게 공개했어요." : "비공개로 바꿨어요.");
   }
 
+  async function editLog(log: LifeLog) { const next = window.prompt("기록할 양 또는 횟수를 입력해주세요.", String(log.value ?? "")); if (next === null) return; const memo = window.prompt("메모를 수정해주세요.", log.memo ?? ""); if (memo === null) return; const meta = logMeta[log.type as keyof typeof logMeta] ?? logMeta.symptom; const response = await fetch(`/api/logs/${log.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ type: log.type, value: next, unit: log.unit ?? meta.unit, status: log.status ?? "", memo, occurredAt: log.occurred_at }) }); if (!response.ok) return toast.error("기록을 수정하지 못했어요."); toast.success("기록을 수정했어요."); window.location.reload(); }
+  async function deleteLog(id: string) { if (!window.confirm("이 기록을 삭제할까요?")) return; const response = await fetch(`/api/logs/${id}`, { method: "DELETE" }); if (!response.ok) return toast.error("기록을 삭제하지 못했어요."); setData((current) => ({ ...current, logs: current.logs.filter((item) => item.id !== id) })); toast.success("기록을 삭제했어요."); }
+  async function editAlbum(entry: AlbumView) { const caption = window.prompt("사진 일기를 수정해주세요.", entry.caption); if (caption === null) return; const milestone = window.prompt("기념일 문구를 수정해주세요.", entry.milestone ?? ""); if (milestone === null) return; const response = await fetch(`/api/album/${entry.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ caption, milestone, takenAt: entry.taken_at, isPublic: Boolean(entry.is_public) }) }); if (!response.ok) return toast.error("사진 일기를 수정하지 못했어요."); toast.success("사진 일기를 수정했어요."); window.location.reload(); }
+  async function deleteAlbum(id: string) { if (!window.confirm("이 사진과 댓글을 모두 삭제할까요?")) return; const response = await fetch(`/api/album/${id}`, { method: "DELETE" }); if (!response.ok) return toast.error("사진을 삭제하지 못했어요."); setData((current) => ({ ...current, album: current.album.filter((item) => item.id !== id) })); toast.success("사진을 삭제했어요."); }
+  async function deleteMessage(kind: "comment" | "guestbook", id: string) { if (!window.confirm("이 글을 삭제할까요?")) return; const response = await fetch(`/api/messages/${kind}/${id}`, { method: "DELETE" }); if (!response.ok) return toast.error("글을 삭제하지 못했어요."); setData((current) => kind === "comment" ? { ...current, comments: current.comments.filter((item) => item.id !== id) } : { ...current, guestbook: current.guestbook.filter((item) => item.id !== id) }); toast.success("글을 삭제했어요."); }
+
   async function copyShareLink() {
     await navigator.clipboard.writeText(`${window.location.origin}/album/tori`);
     toast.success("성장앨범 링크를 복사했어요.");
@@ -144,8 +151,8 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
 
         <Tabs defaultValue="records" className="content-tabs">
           <TabsList><TabsTrigger value="records">최근 기록</TabsTrigger><TabsTrigger value="album">성장앨범</TabsTrigger></TabsList>
-          <TabsContent value="records" id="records"><div className="timeline-card">{data.logs.slice(0, 8).map((log) => { const meta = logMeta[log.type as keyof typeof logMeta] ?? logMeta.symptom; const Icon = meta.icon; return <article className="timeline-item" key={log.id}><span className="timeline-icon" style={{ color: meta.color, background: `${meta.color}1e` }}><Icon /></span><div><div><strong>{meta.label}</strong><time>{new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(new Date(log.occurred_at))}</time></div><p>{log.value != null ? `${log.value}${log.unit ?? ""}` : log.status}{log.memo ? ` · ${log.memo}` : ""}</p></div></article>; })}</div></TabsContent>
-          <TabsContent value="album" id="album"><div className="album-toolbar"><p>공개 스위치를 켠 사진만 친구에게 보여요.</p><Dialog open={photoOpen} onOpenChange={setPhotoOpen}><DialogTrigger asChild><Button><Camera />사진 추가</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>성장앨범에 추가</DialogTitle><DialogDescription>사진과 그날의 기억을 함께 남겨주세요.</DialogDescription></DialogHeader><form action={savePhoto} className="form-stack"><label>사진<Input name="photo" type="file" accept="image/*" /></label><label>촬영일<Input name="takenAt" type="date" defaultValue={today} required /></label><label>한 줄 기록<Input name="caption" required placeholder="오늘의 기억" /></label><label>기념일<Input name="milestone" placeholder="예: 첫 캠핑" /></label><label className="switch-row"><span>친구에게 공개</span><Switch name="isPublic" value="true" defaultChecked /></label><Button disabled={saving} type="submit">{saving ? "올리는 중" : "앨범에 추가"}</Button></form></DialogContent></Dialog></div><div className="album-grid">{data.album.map((entry) => <article className="album-card" key={entry.id}><div className="album-image"><img src={entry.imageUrl} alt={entry.caption} />{entry.milestone && <span>{entry.milestone}</span>}</div><div className="album-info"><time>{entry.taken_at.replaceAll("-", ".")}</time><h3>{entry.caption}</h3><label className="switch-row"><span>{entry.is_public ? "공개 중" : "나만 보기"}</span><Switch checked={Boolean(entry.is_public)} onCheckedChange={(checked) => togglePublic(entry, checked)} /></label></div></article>)}</div></TabsContent>
+          <TabsContent value="records" id="records"><div className="timeline-card">{data.logs.slice(0, 8).map((log) => { const meta = logMeta[log.type as keyof typeof logMeta] ?? logMeta.symptom; const Icon = meta.icon; return <article className="timeline-item" key={log.id}><span className="timeline-icon" style={{ color: meta.color, background: `${meta.color}1e` }}><Icon /></span><div><div><strong>{meta.label}</strong><time>{new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(new Date(log.occurred_at))}</time></div><p>{log.value != null ? `${log.value}${log.unit ?? ""}` : log.status}{log.memo ? ` · ${log.memo}` : ""}</p></div><div className="item-actions"><button onClick={() => editLog(log)} aria-label="기록 수정"><Pencil /></button><button onClick={() => deleteLog(log.id)} aria-label="기록 삭제"><Trash2 /></button></div></article>; })}</div></TabsContent>
+          <TabsContent value="album" id="album"><div className="album-toolbar"><p>공개 스위치를 켠 사진만 친구에게 보여요.</p><Dialog open={photoOpen} onOpenChange={setPhotoOpen}><DialogTrigger asChild><Button><Camera />사진 추가</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>성장앨범에 추가</DialogTitle><DialogDescription>사진과 그날의 기억을 함께 남겨주세요.</DialogDescription></DialogHeader><form action={savePhoto} className="form-stack"><label>사진<Input name="photo" type="file" accept="image/*" /></label><label>촬영일<Input name="takenAt" type="date" defaultValue={today} required /></label><label>한 줄 기록<Input name="caption" required placeholder="오늘의 기억" /></label><label>기념일<Input name="milestone" placeholder="예: 첫 캠핑" /></label><label className="switch-row"><span>친구에게 공개</span><Switch name="isPublic" value="true" defaultChecked /></label><Button disabled={saving} type="submit">{saving ? "올리는 중" : "앨범에 추가"}</Button></form></DialogContent></Dialog></div><div className="album-grid">{data.album.map((entry) => <article className="album-card" key={entry.id}><div className="album-image"><img src={entry.imageUrl} alt={entry.caption} />{entry.milestone && <span>{entry.milestone}</span>}</div><div className="album-info"><time>{entry.taken_at.replaceAll("-", ".")}</time><h3>{entry.caption}</h3><label className="switch-row"><span>{entry.is_public ? "공개 중" : "나만 보기"}</span><Switch checked={Boolean(entry.is_public)} onCheckedChange={(checked) => togglePublic(entry, checked)} /></label><div className="album-actions"><Button variant="outline" size="sm" onClick={() => editAlbum(entry)}><Pencil />수정</Button><Button variant="outline" size="sm" onClick={() => deleteAlbum(entry.id)}><Trash2 />삭제</Button></div></div></article>)}</div><section className="message-admin"><h3><MessageCircle />댓글과 방명록 관리</h3>{data.comments.map((item) => <article key={item.id}><div><strong>사진 댓글 · {item.nickname}</strong><p>{item.content}</p></div><button onClick={() => deleteMessage("comment", item.id)}><Trash2 />삭제</button></article>)}{data.guestbook.map((item) => <article key={item.id}><div><strong>방명록 · {item.nickname}</strong><p>{item.content}</p></div><button onClick={() => deleteMessage("guestbook", item.id)}><Trash2 />삭제</button></article>)}{!data.comments.length && !data.guestbook.length && <p className="no-messages">아직 남겨진 글이 없어요.</p>}</section></TabsContent>
         </Tabs>
       </main>
       <nav className="mobile-nav" aria-label="모바일 메뉴"><a href="#today" className="active"><img className="nav-mascot-icon" src="/icon-today.png" alt="" /><span>오늘</span></a><a href="#records"><img className="nav-mascot-icon" src="/icon-records.png" alt="" /><span>기록</span></a><button onClick={() => { setSelectedType("meal"); setDialogOpen(true); }}><span className="nav-add"><img src="/icon-add.png" alt="" /></span><span>기록하기</span></button><a href="#album"><img className="nav-mascot-icon" src="/icon-album.png" alt="" /><span>앨범</span></a><a href="/album/tori"><img className="nav-mascot-icon" src="/icon-share.png" alt="" /><span>공개보기</span></a></nav>

@@ -3,7 +3,7 @@ import { ensureCat } from "@/lib/data";
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 
-const allowedTypes = new Set(["meal", "water", "pee", "poop", "weight", "symptom", "medicine"]);
+const allowedTypes = new Set(["meal", "water", "poop", "weight", "symptom", "medicine"]);
 
 export async function POST(request: Request) {
   const user = await getChatGPTUser();
@@ -23,4 +23,3 @@ export async function POST(request: Request) {
   ).run();
   return NextResponse.json({ ok: true });
 }
-
