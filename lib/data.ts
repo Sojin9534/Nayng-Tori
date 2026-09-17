@@ -38,6 +38,7 @@ function db() {
 
 export async function ensureCat(ownerId: string) {
   const database = db();
+  let created = false;
   let existing = await database
     .prepare("SELECT * FROM cats WHERE share_slug = ? LIMIT 1")
     .bind("tori")
@@ -58,6 +59,7 @@ export async function ensureCat(ownerId: string) {
         new Date().toISOString(),
       )
       .run();
+    created = true;
     existing = await database
       .prepare("SELECT * FROM cats WHERE share_slug = ? LIMIT 1")
       .bind("tori")
@@ -72,6 +74,8 @@ export async function ensureCat(ownerId: string) {
       .run();
     existing = { ...existing, owner_id: ownerId };
   }
+
+  if (!created) return existing;
 
   const now = new Date();
   const logs = [
