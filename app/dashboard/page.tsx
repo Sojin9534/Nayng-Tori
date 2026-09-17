@@ -13,6 +13,8 @@ export default async function DashboardPage() {
         cat: { ...(data.cat as { id: string; name: string; birth_date: string; breed: string; bio: string; profile_image_key: string | null }), imageUrl: catImageUrl(data.cat) },
         logs: data.logs,
         album: data.album.map((entry) => ({ ...entry, imageUrl: imageUrl(entry) })),
+        comments: data.comments,
+        guestbook: data.guestbook,
       }}
       userName={user.fullName ?? user.email.split("@")[0]}
       signOutPath={chatGPTSignOutPath("/album/tori")}
