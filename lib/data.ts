@@ -18,6 +18,7 @@ export type AlbumEntry = {
   taken_at: string;
   milestone: string | null;
   is_public: number;
+  like_count?: number;
 };
 
 export type PublicMessage = { id: string; nickname: string; content: string; created_at: string; album_entry_id?: string };
@@ -147,7 +148,7 @@ export async function getPublicAlbum(slug: string) {
     .first<Record<string, string>>();
   if (!cat) return null;
   const [album, comments, guestbook] = await Promise.all([database
-    .prepare("SELECT id, image_key, fallback_url, caption, taken_at, milestone, is_public FROM album_entries WHERE cat_id = ? AND is_public = 1 ORDER BY taken_at DESC")
+    .prepare("SELECT id, image_key, fallback_url, caption, taken_at, milestone, is_public, (SELECT COUNT(*) FROM album_likes WHERE album_entry_id = album_entries.id) AS like_count FROM album_entries WHERE cat_id = ? AND is_public = 1 ORDER BY taken_at DESC")
     .bind(cat.id)
     .all<AlbumEntry>(), database.prepare("SELECT id, album_entry_id, nickname, content, created_at FROM album_comments WHERE cat_id = ? ORDER BY created_at ASC").bind(cat.id).all<PublicMessage>(), database.prepare("SELECT id, nickname, content, created_at FROM guestbook_entries WHERE cat_id = ? ORDER BY created_at DESC LIMIT 50").bind(cat.id).all<PublicMessage>()]);
   return { cat, album: album.results, comments: comments.results, guestbook: guestbook.results };

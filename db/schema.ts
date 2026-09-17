@@ -1,4 +1,4 @@
-import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const cats = sqliteTable("cats", {
   id: text("id").primaryKey(),
@@ -45,6 +45,17 @@ export const albumComments = sqliteTable("album_comments", {
   passwordHash: text("password_hash"),
   createdAt: text("created_at").notNull(),
 }, (table) => [index("idx_album_comments_entry_time").on(table.albumEntryId, table.createdAt)]);
+
+export const albumLikes = sqliteTable("album_likes", {
+  id: text("id").primaryKey(),
+  catId: text("cat_id").notNull(),
+  albumEntryId: text("album_entry_id").notNull(),
+  visitorKey: text("visitor_key").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("album_likes_entry_visitor_unique").on(table.albumEntryId, table.visitorKey),
+  index("idx_album_likes_entry").on(table.albumEntryId),
+]);
 
 export const guestbookEntries = sqliteTable("guestbook_entries", {
   id: text("id").primaryKey(),
