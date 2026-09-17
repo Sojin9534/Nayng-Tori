@@ -45,6 +45,8 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
   const [saving, setSaving] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<"today" | "records" | "album">("today");
+  const [activeTab, setActiveTab] = useState<"records" | "album">("records");
   const today = new Date().toISOString().slice(0, 10);
   const todayLogs = useMemo(() => data.logs.filter((log) => log.occurred_at.slice(0, 10) === today), [data.logs, today]);
   const summary = (type: keyof typeof logMeta) => {
@@ -53,6 +55,14 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
     const total = items.reduce((sum, item) => sum + (item.value ?? 0), 0);
     return total ? `${total}${items[0]?.unit ?? logMeta[type].unit}` : "기록 전";
   };
+
+  function goToSection(section: "today" | "records" | "album") {
+    setActiveSection(section);
+    if (section !== "today") setActiveTab(section);
+    window.requestAnimationFrame(() => {
+      document.getElementById(section === "today" ? "today" : "content-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   async function saveLog(formData: FormData) {
     setSaving(true);
@@ -135,7 +145,7 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
       <Toaster position="top-center" richColors />
       <aside className="desktop-sidebar">
         <a className="brand" href="/" aria-label="냥토리 홈"><span className="brand-mark"><img src="/tori-mascot.png" alt="" /></span><span>냥토리</span></a>
-        <nav aria-label="주요 메뉴"><a className="nav-item active" href="#today"><img className="nav-mascot-icon" src="/icon-today.png" alt="" />오늘</a><a className="nav-item" href="#records"><img className="nav-mascot-icon" src="/icon-records.png" alt="" />기록</a><a className="nav-item" href="#album"><img className="nav-mascot-icon" src="/icon-album.png" alt="" />성장앨범</a></nav>
+        <nav aria-label="주요 메뉴"><button type="button" className={`nav-item ${activeSection === "today" ? "active" : ""}`} onClick={() => goToSection("today")}><img className="nav-mascot-icon" src="/icon-today.png" alt="" />오늘</button><button type="button" className={`nav-item ${activeSection === "records" ? "active" : ""}`} onClick={() => goToSection("records")}><img className="nav-mascot-icon" src="/icon-records.png" alt="" />기록</button><button type="button" className={`nav-item ${activeSection === "album" ? "active" : ""}`} onClick={() => goToSection("album")}><img className="nav-mascot-icon" src="/icon-album.png" alt="" />성장앨범</button></nav>
         <div className="sidebar-foot"><div className="mini-profile"><img src={data.cat.imageUrl} alt={data.cat.name} /><div><strong>{data.cat.name}</strong><span>{data.cat.breed}</span></div></div><a className="signout" href={signOutPath} target="_top"><LogOut />로그아웃</a></div>
       </aside>
 
@@ -149,13 +159,13 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
           <DialogContent className="record-dialog"><DialogHeader><DialogTitle>{logMeta[selectedType].label} 기록하기</DialogTitle><DialogDescription>지금 상태를 간단히 남겨주세요.</DialogDescription></DialogHeader><form action={saveLog} className="form-stack"><label>양 또는 횟수<div className="unit-input"><Input name="value" type="number" step="0.1" required placeholder="0" /><span>{logMeta[selectedType].unit}</span></div></label><label>상태<Input name="status" placeholder="예: 잘 먹음, 정상" /></label><label>메모<Input name="memo" placeholder="특이사항이 있다면 적어주세요" /></label><Button disabled={saving} type="submit">{saving ? "저장 중" : "기록 저장"}</Button></form></DialogContent>
         </Dialog>
 
-        <Tabs defaultValue="records" className="content-tabs">
+        <Tabs id="content-tabs" value={activeTab} onValueChange={(value) => { const tab = value as "records" | "album"; setActiveTab(tab); setActiveSection(tab); }} className="content-tabs">
           <TabsList><TabsTrigger value="records">최근 기록</TabsTrigger><TabsTrigger value="album">성장앨범</TabsTrigger></TabsList>
           <TabsContent value="records" id="records"><div className="timeline-card">{data.logs.slice(0, 8).map((log) => { const meta = logMeta[log.type as keyof typeof logMeta] ?? logMeta.symptom; const Icon = meta.icon; return <article className="timeline-item" key={log.id}><span className="timeline-icon" style={{ color: meta.color, background: `${meta.color}1e` }}><Icon /></span><div><div><strong>{meta.label}</strong><time>{new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" }).format(new Date(log.occurred_at))}</time></div><p>{log.value != null ? `${log.value}${log.unit ?? ""}` : log.status}{log.memo ? ` · ${log.memo}` : ""}</p></div><div className="item-actions"><button onClick={() => editLog(log)} aria-label="기록 수정"><Pencil /></button><button onClick={() => deleteLog(log.id)} aria-label="기록 삭제"><Trash2 /></button></div></article>; })}</div></TabsContent>
           <TabsContent value="album" id="album"><div className="album-toolbar"><p>공개 스위치를 켠 사진만 친구에게 보여요.</p><Dialog open={photoOpen} onOpenChange={setPhotoOpen}><DialogTrigger asChild><Button><Camera />사진 추가</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>성장앨범에 추가</DialogTitle><DialogDescription>사진과 그날의 기억을 함께 남겨주세요.</DialogDescription></DialogHeader><form action={savePhoto} className="form-stack"><label>사진<Input name="photo" type="file" accept="image/*" /></label><label>촬영일<Input name="takenAt" type="date" defaultValue={today} required /></label><label>한 줄 기록<Input name="caption" required placeholder="오늘의 기억" /></label><label>기념일<Input name="milestone" placeholder="예: 첫 캠핑" /></label><label className="switch-row"><span>친구에게 공개</span><Switch name="isPublic" value="true" defaultChecked /></label><Button disabled={saving} type="submit">{saving ? "올리는 중" : "앨범에 추가"}</Button></form></DialogContent></Dialog></div><div className="album-grid">{data.album.map((entry) => <article className="album-card" key={entry.id}><div className="album-image"><img src={entry.imageUrl} alt={entry.caption} />{entry.milestone && <span>{entry.milestone}</span>}</div><div className="album-info"><time>{entry.taken_at.replaceAll("-", ".")}</time><h3>{entry.caption}</h3><label className="switch-row"><span>{entry.is_public ? "공개 중" : "나만 보기"}</span><Switch checked={Boolean(entry.is_public)} onCheckedChange={(checked) => togglePublic(entry, checked)} /></label><div className="album-actions"><Button variant="outline" size="sm" onClick={() => editAlbum(entry)}><Pencil />수정</Button><Button variant="outline" size="sm" onClick={() => deleteAlbum(entry.id)}><Trash2 />삭제</Button></div></div></article>)}</div><section className="message-admin"><h3><MessageCircle />댓글과 방명록 관리</h3>{data.comments.map((item) => <article key={item.id}><div><strong>사진 댓글 · {item.nickname}</strong><p>{item.content}</p></div><button onClick={() => deleteMessage("comment", item.id)}><Trash2 />삭제</button></article>)}{data.guestbook.map((item) => <article key={item.id}><div><strong>방명록 · {item.nickname}</strong><p>{item.content}</p></div><button onClick={() => deleteMessage("guestbook", item.id)}><Trash2 />삭제</button></article>)}{!data.comments.length && !data.guestbook.length && <p className="no-messages">아직 남겨진 글이 없어요.</p>}</section></TabsContent>
         </Tabs>
       </main>
-      <nav className="mobile-nav" aria-label="모바일 메뉴"><a href="#today" className="active"><img className="nav-mascot-icon" src="/icon-today.png" alt="" /><span>오늘</span></a><a href="#records"><img className="nav-mascot-icon" src="/icon-records.png" alt="" /><span>기록</span></a><button onClick={() => { setSelectedType("meal"); setDialogOpen(true); }}><span className="nav-add"><img src="/icon-add.png" alt="" /></span><span>기록하기</span></button><a href="#album"><img className="nav-mascot-icon" src="/icon-album.png" alt="" /><span>앨범</span></a><a href="/album/tori"><img className="nav-mascot-icon" src="/icon-share.png" alt="" /><span>공개보기</span></a></nav>
+      <nav className="mobile-nav" aria-label="모바일 메뉴"><button type="button" className={activeSection === "today" ? "active" : ""} onClick={() => goToSection("today")}><img className="nav-mascot-icon" src="/icon-today.png" alt="" /><span>오늘</span></button><button type="button" className={activeSection === "records" ? "active" : ""} onClick={() => goToSection("records")}><img className="nav-mascot-icon" src="/icon-records.png" alt="" /><span>기록</span></button><button type="button" onClick={() => { setSelectedType("meal"); setDialogOpen(true); }}><span className="nav-add"><img src="/icon-add.png" alt="" /></span><span>기록하기</span></button><button type="button" className={activeSection === "album" ? "active" : ""} onClick={() => goToSection("album")}><img className="nav-mascot-icon" src="/icon-album.png" alt="" /><span>앨범</span></button><a href="/album/tori"><img className="nav-mascot-icon" src="/icon-share.png" alt="" /><span>공개보기</span></a></nav>
     </div>
   );
 }
