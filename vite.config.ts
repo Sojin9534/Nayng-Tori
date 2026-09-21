@@ -1,4 +1,6 @@
 import vinext from "vinext";
+import personalConfig from "./wrangler.personal.json";
+const personalCloudflare = process.env.NYANGTORI_CLOUDFLARE === "1";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
 import { readExecutionProfile } from "./scripts/execution-profile.mjs";
@@ -57,11 +59,11 @@ export default defineConfig(async () => {
     },
     plugins: [
       vinext(),
-      sites({ mockAuth: !managedLinux }),
+      ...(!personalCloudflare ? [sites({ mockAuth: !managedLinux })] : []),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
-        config: localBindingConfig,
+        config: personalCloudflare ? personalConfig : localBindingConfig,
       }),
     ],
   };

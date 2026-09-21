@@ -1,3 +1,5 @@
+import { env } from "cloudflare:workers";
+import { verifyAccessUser } from "@/lib/access-auth.mjs";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -20,6 +22,9 @@ const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
+  if (env.AUTH_PROVIDER === "cloudflare-access") {
+    return verifyAccessUser(requestHeaders, env);
+  }
   const userId = requestHeaders.get(USER_ID_HEADER);
   const email = requestHeaders.get(USER_EMAIL_HEADER);
   if (!userId || !email) return null;
@@ -45,16 +50,19 @@ export async function requireChatGPTUser(
   const user = await getChatGPTUser();
   if (user) return user;
 
+  if (env.AUTH_PROVIDER === "cloudflare-access") redirect("/admin-login");
   redirect(chatGPTSignInPath(returnTo));
 }
 
 export function chatGPTSignInPath(returnTo: string): string {
   const safeReturnTo = safeRelativeReturnPath(returnTo);
+  if (env.AUTH_PROVIDER === "cloudflare-access") return "/dashboard";
   return `${SIGN_IN_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`;
 }
 
 export function chatGPTSignOutPath(returnTo = "/"): string {
   const safeReturnTo = safeRelativeReturnPath(returnTo);
+  if (env.AUTH_PROVIDER === "cloudflare-access") return "/cdn-cgi/access/logout";
   return `${SIGN_OUT_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`;
 }
 

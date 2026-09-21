@@ -1,0 +1,26 @@
+{
+  "name": "nayng-tori",
+  "main": "vinext/server/fetch-handler",
+  "compatibility_date": "2026-09-17",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "keep_vars": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nyangtori-db",
+      "database_id": "4d1cdba2-a3e1-4280-96ad-6a6c5f147c15",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "nyangtori-photos"
+    }
+  ],
+  "vars": {
+    "AUTH_PROVIDER": "cloudflare-access"
+  }
+}
