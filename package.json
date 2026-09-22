@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "build:cloudflare": "node scripts/build-cloudflare.mjs",
-    "deploy:cloudflare": "wrangler deploy --config dist/server/wrangler.json",
+    "deploy:cloudflare": "wrangler d1 migrations apply nyangtori-db --remote --config wrangler.personal.json && wrangler deploy --config dist/server/wrangler.json",
     "db:migrate:cloudflare": "wrangler d1 migrations apply nyangtori-db --remote --config wrangler.personal.json"
   },
   "dependencies": {

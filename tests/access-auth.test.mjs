@@ -16,6 +16,7 @@ test('verified administrator keeps migrated owner id', async()=> assert.equal((a
 test('cookie works on API paths', async()=> assert.ok(await verifyAccessUser(new Headers({cookie:`CF_Authorization=${await token()}`}), env,fetchKeys)));
 test('forged identity headers rejected',async()=>assert.equal(await verifyAccessUser(new Headers({'oai-authenticated-user-id':'owner','oai-authenticated-user-email':'owner@example.com'}),env,fetchKeys),null));
 test('missing settings fail closed',async()=>assert.equal(await verify(await token(),{...env,ADMIN_EMAIL:''}),null));
+test('audience is optional for a single-app Access team setup',async()=>assert.ok(await verify(await token(),(({ACCESS_AUD,...settings})=>settings)(env))));
 for (const [name, changes] of Object.entries({expired:{exp:0},wrongAudience:{aud:['other']},wrongIssuer:{iss:'https://evil.example'},otherUser:{email:'other@example.com'},future:{nbf:Date.now()/1000+999},noExpiry:{exp:undefined}})) {
  test(name,async()=>assert.equal(await verify(await token({...payload,...changes})),null));
 }

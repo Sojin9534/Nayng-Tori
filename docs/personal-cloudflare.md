@@ -19,7 +19,7 @@ R2 Public Access를 활성화할 필요는 없습니다. 사진은 앱의 /api/m
 
 ## DB 초기화
 
-Cloudflare에 인증된 로컬 환경에서, 비어 있는 새 DB에만 먼저 실행합니다.
+Cloudflare 빌드가 배포될 때 자동으로 실행됩니다. 필요하면 Cloudflare에 인증된 로컬 환경에서 직접 실행할 수도 있습니다.
 
 ```sh
 pnpm run db:migrate:cloudflare
@@ -38,17 +38,9 @@ ChatGPT Sites의 로그인 헤더를 개인 Workers에서 신뢰하지 않습니
 2. Cloudflare Zero Trust에서 해당 호스트의 /dashboard 및 /dashboard/*를 보호하는 Access 앱을 설정합니다.
 3. Allow 정책에는 관리자 이메일 하나만 넣습니다. 이메일 일회용 코드 또는 설정된 Google 로그인 공급자를 사용할 수 있습니다.
 4. 공개 /album/*, /api/public/* 경로에는 관리자 전용 정책을 적용하지 않습니다.
-5. Worker 런타임 변수에 아래 값을 설정합니다. 코드에 개인 이메일이나 인증 키를 커밋하지 마세요.
+5. 이 저장소의 `wrangler.personal.json`에 관리자 설정이 들어 있습니다. 팀에서 다른 Access 앱의 토큰도 발급하는 경우에는 `ACCESS_AUD`도 추가해 특정 앱 토큰만 허용할 수 있습니다.
 
-| 변수 | 값 |
-| --- | --- |
-| AUTH_PROVIDER | cloudflare-access (설정 파일에 포함) |
-| ACCESS_TEAM_DOMAIN | https://팀이름.cloudflareaccess.com (끝에 / 없이) |
-| ACCESS_AUD | 위 Access 앱의 Application Audience 태그 |
-| ADMIN_EMAIL | 허용할 관리자 이메일 |
-| ADMIN_OWNER_ID | 이전 DB의 cats.owner_id와 동일한 값. 완전 신규 설치면 고정된 고유 ID |
-
-이 네 가지 관리자 설정이 없거나 토큰이 유효하지 않으면 관리자 API는 인증을 거부합니다.
+서명된 토큰의 발급자와 관리자 이메일이 맞지 않으면 관리자 API는 인증을 거부합니다.
 로그인 후 API는 Access 쿠키도 검증합니다. 임의 oai-authenticated-user-* 헤더로는 개인 배포의 관리자 권한을 얻지 못합니다.
 workers.dev에서 경로별 Access 구성을 제공하지 않는 경우 별도 도메인 연결 또는 다른 로그인 구성이 필요합니다. 전체 호스트 보호를 켜면 친구들의 공개 앨범도 잠기므로 이를 그대로 공유하지 마세요.
 
@@ -64,7 +56,7 @@ workers.dev에서 경로별 Access 구성을 제공하지 않는 경우 별도 �
 ## 검증 결과
 
 - 개인 Cloudflare 빌드 성공, 생성된 설정의 DB/R2 바인딩 확인.
-- 인증 테스트 11개 통과 (서명, 만료, 발급자, 대상 앱, 관리자 이메일, 쿠키, 위조 헤더, 설정 누락).
+- 인증 테스트 12개 통과 (서명, 만료, 발급자, 선택적 대상 앱, 관리자 이메일, 쿠키, 위조 헤더, 설정 누락).
 - 전체 TypeScript 검사에는 기존 UI 파일 오류 6개가 남아 있습니다. 변경 전 코드에서도 동일한 오류를 확인했습니다.
 - 실제 Cloudflare 배포, Access 로그인, DB/R2 이전은 아직 실행하지 않았습니다.
 

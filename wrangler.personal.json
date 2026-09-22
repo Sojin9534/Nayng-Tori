@@ -21,6 +21,9 @@
     }
   ],
   "vars": {
-    "AUTH_PROVIDER": "cloudflare-access"
+    "AUTH_PROVIDER": "cloudflare-access",
+    "ACCESS_TEAM_DOMAIN": "https://gentle-salad-2991.cloudflareaccess.com",
+    "ADMIN_EMAIL": "9595jsj@gmail.com",
+    "ADMIN_OWNER_ID": "demo-owner"
   }
 }
