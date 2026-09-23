@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { Bone, Camera, ChevronRight, Droplets, HeartPulse, LogOut, MessageCircle, PawPrint, Pencil, Plus, Scale, Share2, Sparkles, Trash2, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import type { AlbumEntry, LifeLog, PublicMessage } from "@/lib/data";
+import type { LegacyImportResult } from "./dashboard/actions";
 
 type AlbumView = AlbumEntry & { imageUrl: string };
 type DashboardData = {
@@ -38,7 +39,7 @@ function ageLabel(birthDate: string) {
   return `태어난 지 ${days}일`;
 }
 
-export default function Dashboard({ initialData, userName, signOutPath }: { initialData: DashboardData; userName: string; signOutPath: string }) {
+export default function Dashboard({ initialData, userName, signOutPath, legacyImportAction }: { initialData: DashboardData; userName: string; signOutPath: string; legacyImportAction: (previous: LegacyImportResult, formData: FormData) => Promise<LegacyImportResult> }) {
   const [data, setData] = useState(initialData);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<keyof typeof logMeta>("meal");
@@ -46,6 +47,7 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
   const [photoOpen, setPhotoOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [legacyOpen, setLegacyOpen] = useState(false);
+  const [legacyResult, legacyFormAction, legacyPending] = useActionState(legacyImportAction, {});
   const [activeSection, setActiveSection] = useState<"today" | "records" | "album">("today");
   const [activeTab, setActiveTab] = useState<"records" | "album">("records");
   const today = new Date().toISOString().slice(0, 10);
@@ -102,26 +104,14 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
     }
   }
 
-  async function importLegacy(formData: FormData) {
-    setSaving(true);
-    try {
-      const response = await fetch("/dashboard/api/import-legacy", { method: "POST", body: formData });
-      const raw = await response.text();
-      let result: { error?: string; copied?: number; total?: number; likes?: number } = {};
-      try { result = JSON.parse(raw) as typeof result; } catch { /* handled below */ }
-      if (!result.error && !response.ok) {
-        result.error = `가져오기를 처리하지 못했어요. (${response.status})`;
-      }
-      if (!response.ok) return toast.error(result.error ?? "기존 자료를 가져오지 못했어요.");
-      toast.success(`기존 자료·좋아요 ${result.likes ?? 0}개와 사진 ${result.copied}/${result.total}개를 가져왔어요.`);
+  useEffect(() => {
+    if (legacyResult.error) toast.error(legacyResult.error);
+    if (legacyResult.ok) {
+      toast.success(`기존 자료·좋아요 ${legacyResult.likes ?? 0}개와 사진 ${legacyResult.copied}/${legacyResult.total}개를 가져왔어요.`);
       setLegacyOpen(false);
       window.setTimeout(() => window.location.reload(), 700);
-    } catch {
-      toast.error("기존 자료를 가져오지 못했어요. 다시 눌러주세요.");
-    } finally {
-      setSaving(false);
     }
-  }
+  }, [legacyResult]);
 
   async function togglePublic(entry: AlbumView, isPublic: boolean) {
     setData((current) => ({ ...current, album: current.album.map((item) => item.id === entry.id ? { ...item, is_public: isPublic ? 1 : 0 } : item) }));
@@ -173,7 +163,7 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
 
       <main className="main-content">
         <header className="mobile-head"><a className="brand" href="/"><span className="brand-mark"><img src="/tori-mascot.png" alt="" /></span><span>냥토리</span></a><Button variant="outline" size="icon" onClick={copyShareLink} aria-label="성장앨범 공유"><img className="header-share-icon" src="/icon-share.png" alt="" /></Button></header>
-        <section id="today" className="welcome-row"><div><span className="eyebrow">{formatDate(new Date().toISOString())}</span><h1>{data.cat.name}의 오늘</h1><p>{userName} 집사님, 오늘 기록을 남겨주세요.</p></div><div><Dialog open={legacyOpen} onOpenChange={setLegacyOpen}><DialogTrigger asChild><Button variant="outline" disabled={saving}>기존 자료 가져오기</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>기존 냥토리 자료 가져오기</DialogTitle><DialogDescription>이전 사이트에서 내려받은 파일을 선택해주세요. 지금 새로 입력한 개인 데이터는 삭제되고, 기존 댓글·방명록의 삭제 비밀번호는 초기화됩니다.</DialogDescription></DialogHeader><form className="form-stack" onSubmit={(event) => { event.preventDefault(); void importLegacy(new FormData(event.currentTarget)); }}><label>이전 파일<Input name="transfer" type="file" accept="application/json,.json" required /></label><Button disabled={saving} type="submit">{saving ? "가져오는 중" : "가져오기"}</Button></form></DialogContent></Dialog><Button className="share-button" onClick={copyShareLink}><Share2 />앨범 공유</Button></div></section>
+        <section id="today" className="welcome-row"><div><span className="eyebrow">{formatDate(new Date().toISOString())}</span><h1>{data.cat.name}의 오늘</h1><p>{userName} 집사님, 오늘 기록을 남겨주세요.</p></div><div><Dialog open={legacyOpen} onOpenChange={setLegacyOpen}><DialogTrigger asChild><Button variant="outline" disabled={saving || legacyPending}>기존 자료 가져오기</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>기존 냥토리 자료 가져오기</DialogTitle><DialogDescription>이전 사이트에서 내려받은 파일을 선택해주세요. 지금 새로 입력한 개인 데이터는 삭제되고, 기존 댓글·방명록의 삭제 비밀번호는 초기화됩니다.</DialogDescription></DialogHeader><form className="form-stack" action={legacyFormAction}><label>이전 파일<Input name="transfer" type="file" accept="application/json,.json" required /></label><Button disabled={legacyPending} type="submit">{legacyPending ? "가져오는 중" : "가져오기"}</Button></form></DialogContent></Dialog><Button className="share-button" onClick={copyShareLink}><Share2 />앨범 공유</Button></div></section>
         <section className="pet-hero"><img src={data.cat.imageUrl} alt={`${data.cat.name} 대표 사진`} /><div className="pet-hero-copy"><span className="pet-pill"><Sparkles />{ageLabel(data.cat.birth_date)}</span><h2>{data.cat.name}</h2><p>{data.cat.bio}</p><Dialog open={profileOpen} onOpenChange={setProfileOpen}><DialogTrigger asChild><Button className="profile-edit-button" variant="outline"><Pencil />기본 정보 수정</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>기본 정보 수정</DialogTitle><DialogDescription>저장하면 공개 성장앨범에도 바로 반영돼요.</DialogDescription></DialogHeader><form noValidate onSubmit={(event) => { event.preventDefault(); void saveProfile(new FormData(event.currentTarget)); }} className="form-stack"><label>대표 사진<Input name="photo" type="file" accept="image/*" /></label><label>이름<Input name="name" defaultValue={data.cat.name} maxLength={30} /></label><label>생일<Input name="birthDate" type="date" defaultValue={data.cat.birth_date} /></label><label>품종<Input name="breed" defaultValue={data.cat.breed} maxLength={50} /></label><label>소개<Input name="bio" defaultValue={data.cat.bio} maxLength={160} /></label><Button disabled={saving} type="submit">{saving ? "저장 중" : "변경사항 저장"}</Button></form></DialogContent></Dialog><div className="streak"><span>이번 주 기록</span><strong>5일</strong><div className="streak-dots">{[1,2,3,4,5,6,7].map((d) => <i className={d < 6 ? "filled" : ""} key={d} />)}</div></div></div></section>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
