@@ -106,7 +106,12 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
     setSaving(true);
     try {
       const response = await fetch("/dashboard/api/import-legacy", { method: "POST", body: formData });
-      const result = await response.json() as { error?: string; copied?: number; total?: number; likes?: number };
+      const raw = await response.text();
+      let result: { error?: string; copied?: number; total?: number; likes?: number } = {};
+      try { result = JSON.parse(raw) as typeof result; } catch { /* handled below */ }
+      if (!result.error && !response.ok) {
+        result.error = `가져오기를 처리하지 못했어요. (${response.status})`;
+      }
       if (!response.ok) return toast.error(result.error ?? "기존 자료를 가져오지 못했어요.");
       toast.success(`기존 자료·좋아요 ${result.likes ?? 0}개와 사진 ${result.copied}/${result.total}개를 가져왔어요.`);
       setLegacyOpen(false);
