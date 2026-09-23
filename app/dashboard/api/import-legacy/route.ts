@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { getChatGPTUser } from "@/app/chatgpt-auth";
 
 export const dynamic = "force-dynamic";
 const oldMedia = "https://nyanglog.biz-sojin9534.chatgpt.site";
@@ -27,7 +27,10 @@ function isTransfer(value: unknown): value is Transfer {
 }
 
 export async function POST(request: Request) {
-  await requireChatGPTUser("/dashboard");
+  const user = await getChatGPTUser();
+  if (!user) {
+    return NextResponse.json({ error: "관리자 인증 정보를 받지 못했어요. 대시보드에서 로그아웃한 뒤 이메일 로그인으로 다시 들어와주세요." }, { status: 401 });
+  }
   const form = await request.formData();
   const file = form.get("transfer");
   if (!(file instanceof File) || file.size === 0 || file.size > 2 * 1024 * 1024) return NextResponse.json({ error: "내려받은 이전 파일을 선택해주세요." }, { status: 400 });
