@@ -1,6 +1,7 @@
 import { requireChatGPTUser, chatGPTSignOutPath } from "../chatgpt-auth";
 import { catImageUrl, getDashboard, imageUrl } from "@/lib/data";
 import DashboardView from "../dashboard";
+import { importLegacyAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function DashboardPage() {
       }}
       userName={user.fullName ?? user.email.split("@")[0]}
       signOutPath={chatGPTSignOutPath("/album/tori")}
+      legacyImportAction={importLegacyAction}
     />
   );
 }
