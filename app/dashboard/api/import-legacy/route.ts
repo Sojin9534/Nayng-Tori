@@ -26,12 +26,7 @@ function isTransfer(value: unknown): value is Transfer {
   return data.version === 1 && Boolean(data.cat) && Array.isArray(data.album_entries) && Array.isArray(data.album_comments) && Array.isArray(data.guestbook_entries) && Array.isArray(data.life_logs) && Array.isArray(data.album_likes);
 }
 
-export async function POST(request: Request) {
-  const user = await getChatGPTUser();
-  if (!user) {
-    return NextResponse.json({ error: "관리자 인증 정보를 받지 못했어요. 대시보드에서 로그아웃한 뒤 이메일 로그인으로 다시 들어와주세요." }, { status: 401 });
-  }
-  const form = await request.formData();
+export async function importLegacy(form: FormData) {
   const file = form.get("transfer");
   if (!(file instanceof File) || file.size === 0 || file.size > 2 * 1024 * 1024) return NextResponse.json({ error: "내려받은 이전 파일을 선택해주세요." }, { status: 400 });
   let transfer: Transfer;
@@ -70,4 +65,12 @@ export async function POST(request: Request) {
     await env.BUCKET!.put(key, response.body, { httpMetadata: { contentType: response.headers.get("content-type") ?? "image/jpeg" } });
   }));
   return NextResponse.json({ ok: true, copied: settled.filter((result) => result.status === "fulfilled").length, total: keys.length, likes: transfer.album_likes.length });
+}
+
+export async function POST(request: Request) {
+  const user = await getChatGPTUser();
+  if (!user) {
+    return NextResponse.json({ error: "관리자 인증 정보를 받지 못했어요. 대시보드에서 로그아웃한 뒤 이메일 로그인으로 다시 들어와주세요." }, { status: 401 });
+  }
+  return importLegacy(await request.formData());
 }
