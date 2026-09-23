@@ -105,7 +105,7 @@ export default function Dashboard({ initialData, userName, signOutPath }: { init
   async function importLegacy(formData: FormData) {
     setSaving(true);
     try {
-      const response = await fetch("/api/admin/import-legacy", { method: "POST", body: formData });
+      const response = await fetch("/dashboard/api/import-legacy", { method: "POST", body: formData });
       const result = await response.json() as { error?: string; copied?: number; total?: number; likes?: number };
       if (!response.ok) return toast.error(result.error ?? "기존 자료를 가져오지 못했어요.");
       toast.success(`기존 자료·좋아요 ${result.likes ?? 0}개와 사진 ${result.copied}/${result.total}개를 가져왔어요.`);
