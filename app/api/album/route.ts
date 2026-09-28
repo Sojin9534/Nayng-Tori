@@ -27,14 +27,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "JPG·PNG·HEIC 등 20MB 이하 사진만 올릴 수 있어요." }, { status: 400 });
     }
     imageKey = `${cat.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
-    await env.BUCKET!.put(imageKey, file.stream(), { httpMetadata: { contentType } });
+    // The client only accepts files up to 20MB. Sending the bytes directly is
+    // more reliable than forwarding a multipart File stream through Vinext.
+    try {
+      await env.BUCKET!.put(imageKey, await file.arrayBuffer(), { httpMetadata: { contentType } });
+    } catch (error) {
+      console.error("album photo R2 upload failed", error);
+      return NextResponse.json({ error: "사진 파일 저장에 실패했어요. 잠시 뒤 다시 시도해주세요." }, { status: 500 });
+    }
   }
-  await env.DB!.prepare(
-    "INSERT INTO album_entries (id, cat_id, image_key, fallback_url, caption, taken_at, milestone, is_public, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  ).bind(
-    crypto.randomUUID(), cat.id, imageKey, imageKey ? null : "/tori.png",
-    String(form.get("caption") ?? "오늘의 토리"), String(form.get("takenAt") ?? new Date().toISOString().slice(0, 10)),
-    String(form.get("milestone") ?? "") || null, form.get("isPublic") === "true" ? 1 : 0, new Date().toISOString(),
-  ).run();
+  try {
+    await env.DB!.prepare(
+      "INSERT INTO album_entries (id, cat_id, image_key, fallback_url, caption, taken_at, milestone, is_public, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    ).bind(
+      crypto.randomUUID(), cat.id, imageKey, imageKey ? null : "/tori.png",
+      String(form.get("caption") ?? "오늘의 토리"), String(form.get("takenAt") ?? new Date().toISOString().slice(0, 10)),
+      String(form.get("milestone") ?? "") || null, form.get("isPublic") === "true" ? 1 : 0, new Date().toISOString(),
+    ).run();
+  } catch (error) {
+    console.error("album entry D1 insert failed", error);
+    if (imageKey) await env.BUCKET!.delete(imageKey).catch((cleanupError) => console.error("orphaned album photo cleanup failed", cleanupError));
+    return NextResponse.json({ error: "사진 기록 저장에 실패했어요. 잠시 뒤 다시 시도해주세요." }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
