@@ -10,7 +10,7 @@
 .diary-photo,.public-diary-card .diary-photo{height:auto!important;display:block;background:transparent}.diary-photo img{display:block;width:100%!important;height:auto!important;object-fit:initial!important;object-position:initial!important}
 .photo-heart{border:0!important;min-width:46px!important;width:auto!important;height:38px!important;padding:0 10px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;cursor:pointer;font:inherit}.photo-heart span{font-size:1.15rem;transition:transform .18s}.photo-heart b{font-size:.75rem;color:#68575c}.photo-heart:hover span,.photo-heart.liked span{transform:scale(1.2)}.photo-heart.liked{background:#f7a9c0!important;color:#fff!important}.photo-heart.liked b{color:#fff}
 .public-diary-card>.diary-page{height:auto!important;overflow:visible!important}.public-diary-card .comment-list{height:auto!important;max-height:none!important;overflow:visible!important}.public-diary-card .comment-list p{min-width:0}.public-diary-card .comment-list span{overflow-wrap:anywhere}
-@media(max-width:620px){.public-grid.diary-grid{grid-template-columns:1fr}.diary-card{padding:10px!important;box-shadow:3px 5px 0 #f8dce5,6px 9px 0 #fff0b8!important}.diary-photo,.public-diary-card .diary-photo{height:300px!important}.diary-page{min-height:135px}}
+@media(max-width:620px){.public-grid.diary-grid{grid-template-columns:1fr}.diary-card{padding:10px!important;box-shadow:3px 5px 0 #f8dce5,6px 9px 0 #fff0b8!important}.diary-page{min-height:135px}}
 
 /* 기존 군청색보다 우선 적용되는 실제 화면 배경 */
 html body .album-cover{background:linear-gradient(135deg,#ffdce8 0%,#ffe8ee 48%,#fff0b5 100%);color:#493f42;box-shadow:0 22px 55px rgba(198,128,148,.24)}
