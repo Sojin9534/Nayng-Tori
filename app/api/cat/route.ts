@@ -3,6 +3,16 @@ import { ensureCat } from "@/lib/data";
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const imageTypes: Record<string, string> = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", heic: "image/heic", heif: "image/heif",
+};
+
+function imageType(file: File) {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return file.type.startsWith("image/") ? file.type : imageTypes[extension] || file.type;
+}
+
 export async function PATCH(request: Request) {
   const user = await getChatGPTUser();
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -21,11 +31,12 @@ export async function PATCH(request: Request) {
   const file = form.get("photo");
   let profileImageKey = cat.profile_image_key ?? null;
   if (file instanceof File && file.size > 0) {
-    if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
-      return NextResponse.json({ error: "8MB 이하 이미지 파일만 올릴 수 있어요." }, { status: 400 });
+    const contentType = imageType(file);
+    if (!contentType.startsWith("image/") || file.size > MAX_IMAGE_BYTES) {
+      return NextResponse.json({ error: "JPG·PNG·HEIC 등 20MB 이하 사진만 올릴 수 있어요." }, { status: 400 });
     }
     profileImageKey = `${cat.id}/profile-${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
-    await env.BUCKET!.put(profileImageKey, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
+    await env.BUCKET!.put(profileImageKey, file.stream(), { httpMetadata: { contentType } });
   }
 
   await env.DB!.prepare(
