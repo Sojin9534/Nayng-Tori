@@ -89,7 +89,8 @@ export default function Dashboard({ initialData, userName, signOutPath, legacyIm
     try {
       const response = await fetch("/api/album", { method: "POST", body: formData });
       if (!response.ok) {
-        toast.error((await response.json()).error ?? "사진을 저장하지 못했어요.");
+        const result = await response.json().catch(() => null) as { error?: string } | null;
+        toast.error(result?.error ?? `사진을 저장하지 못했어요. (오류 ${response.status})`);
         return;
       }
       setPhotoOpen(false);
