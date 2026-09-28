@@ -42,6 +42,15 @@ export async function importLegacy(form: FormData) {
   const current = await db.prepare("SELECT owner_id FROM cats WHERE share_slug = ?").bind(text(transfer.cat, "share_slug")).first<{ owner_id: string }>();
   if (current && current.owner_id !== env.ADMIN_OWNER_ID) return NextResponse.json({ error: "새 냥토리에 이미 개인 기록이 있어 이전을 중단했어요." }, { status: 409 });
 
+  const keys = [nullableText(transfer.cat, "profile_image_key"), ...transfer.album_entries.map((item) => nullableText(item, "image_key"))].filter((key): key is string => Boolean(key));
+  const media = await Promise.all(keys.map(async (key) => {
+    const source = oldMedia + "/api/media/" + key.split("/").map(encodeURIComponent).join("/");
+    const response = await fetch(source);
+    if (!response.ok || !response.body) throw new Error("기존 사진을 불러오지 못했어요.");
+    return { key, body: await response.arrayBuffer(), contentType: response.headers.get("content-type") ?? "image/jpeg" };
+  }));
+  await Promise.all(media.map(({ key, body, contentType }) => env.BUCKET!.put(key, body, { httpMetadata: { contentType } })));
+
   await db.batch([
     db.prepare("DELETE FROM album_comments"),
     db.prepare("DELETE FROM album_likes"),
@@ -56,15 +65,7 @@ export async function importLegacy(form: FormData) {
     ...transfer.album_comments.map((item) => db.prepare("INSERT INTO album_comments (id, cat_id, album_entry_id, nickname, content, created_at, password_hash) VALUES (?, ?, ?, ?, ?, ?, NULL)").bind(text(item, "id"), originalCat, text(item, "album_entry_id"), text(item, "nickname"), text(item, "content"), text(item, "created_at"))),
     ...transfer.guestbook_entries.map((item) => db.prepare("INSERT INTO guestbook_entries (id, cat_id, nickname, content, created_at, password_hash) VALUES (?, ?, ?, ?, ?, NULL)").bind(text(item, "id"), originalCat, text(item, "nickname"), text(item, "content"), text(item, "created_at"))),
   ]);
-
-  const keys = [nullableText(transfer.cat, "profile_image_key"), ...transfer.album_entries.map((item) => nullableText(item, "image_key"))].filter((key): key is string => Boolean(key));
-  const settled = await Promise.allSettled(keys.map(async (key) => {
-    const source = oldMedia + "/api/media/" + key.split("/").map(encodeURIComponent).join("/");
-    const response = await fetch(source);
-    if (!response.ok || !response.body) throw new Error("사진을 불러오지 못했어요.");
-    await env.BUCKET!.put(key, response.body, { httpMetadata: { contentType: response.headers.get("content-type") ?? "image/jpeg" } });
-  }));
-  return NextResponse.json({ ok: true, copied: settled.filter((result) => result.status === "fulfilled").length, total: keys.length, likes: transfer.album_likes.length });
+  return NextResponse.json({ ok: true, copied: media.length, total: keys.length, likes: transfer.album_likes.length });
 }
 
 export async function POST(request: Request) {
