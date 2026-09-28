@@ -39,6 +39,38 @@ function ageLabel(birthDate: string) {
   return `태어난 지 ${days}일`;
 }
 
+const UPLOAD_TARGET_BYTES = 850 * 1024;
+
+async function makeUploadPhoto(file: File) {
+  if (file.size <= UPLOAD_TARGET_BYTES || !file.type.startsWith("image/")) return file;
+  const source = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("이미지를 읽지 못했어요."));
+      element.src = source;
+    });
+    const longestSide = Math.max(image.naturalWidth, image.naturalHeight);
+    const scale = Math.min(1, 1600 / longestSide);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    let quality = 0.84;
+    let blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+    while (blob && blob.size > UPLOAD_TARGET_BYTES && quality > 0.42) {
+      quality -= 0.08;
+      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+    }
+    if (!blob || blob.size > UPLOAD_TARGET_BYTES) throw new Error("사진 크기를 줄이지 못했어요.");
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, "") || "tori-photo"}.jpg`, { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(source);
+  }
+}
+
 export default function Dashboard({ initialData, userName, signOutPath, legacyImportAction }: { initialData: DashboardData; userName: string; signOutPath: string; legacyImportAction: (previous: LegacyImportResult, formData: FormData) => Promise<LegacyImportResult> }) {
   const [data, setData] = useState(initialData);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -87,6 +119,7 @@ export default function Dashboard({ initialData, userName, signOutPath, legacyIm
     }
     setSaving(true);
     try {
+      if (photo instanceof File) formData.set("photo", await makeUploadPhoto(photo));
       const response = await fetch("/api/album", { method: "POST", body: formData });
       if (!response.ok) {
         const result = await response.json().catch(() => null) as { error?: string } | null;
