@@ -80,13 +80,26 @@ export default function Dashboard({ initialData, userName, signOutPath, legacyIm
   }
 
   async function savePhoto(formData: FormData) {
+    const photo = formData.get("photo");
+    if (photo instanceof File && photo.size > 20 * 1024 * 1024) {
+      toast.error("사진은 20MB 이하로 올려주세요.");
+      return;
+    }
     setSaving(true);
-    const response = await fetch("/api/album", { method: "POST", body: formData });
-    setSaving(false);
-    if (!response.ok) return toast.error((await response.json()).error ?? "사진을 저장하지 못했어요.");
-    setPhotoOpen(false);
-    toast.success("성장앨범에 사진을 추가했어요.");
-    window.location.reload();
+    try {
+      const response = await fetch("/api/album", { method: "POST", body: formData });
+      if (!response.ok) {
+        toast.error((await response.json()).error ?? "사진을 저장하지 못했어요.");
+        return;
+      }
+      setPhotoOpen(false);
+      toast.success("성장앨범에 사진을 추가했어요.");
+      window.location.reload();
+    } catch {
+      toast.error("사진을 올리지 못했어요. 사진 용량이나 인터넷 연결을 확인한 뒤 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function saveProfile(formData: FormData) {
