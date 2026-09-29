@@ -39,38 +39,6 @@ function ageLabel(birthDate: string) {
   return `태어난 지 ${days}일`;
 }
 
-const UPLOAD_TARGET_BYTES = 850 * 1024;
-
-async function makeUploadPhoto(file: File) {
-  if (file.size <= UPLOAD_TARGET_BYTES || !file.type.startsWith("image/")) return file;
-  const source = URL.createObjectURL(file);
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new Image();
-      element.onload = () => resolve(element);
-      element.onerror = () => reject(new Error("이미지를 읽지 못했어요."));
-      element.src = source;
-    });
-    const longestSide = Math.max(image.naturalWidth, image.naturalHeight);
-    const scale = Math.min(1, 1600 / longestSide);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-    canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-    let quality = 0.84;
-    let blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
-    while (blob && blob.size > UPLOAD_TARGET_BYTES && quality > 0.42) {
-      quality -= 0.08;
-      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
-    }
-    if (!blob || blob.size > UPLOAD_TARGET_BYTES) throw new Error("사진 크기를 줄이지 못했어요.");
-    return new File([blob], `${file.name.replace(/\.[^.]+$/, "") || "tori-photo"}.jpg`, { type: "image/jpeg" });
-  } finally {
-    URL.revokeObjectURL(source);
-  }
-}
-
 export default function Dashboard({ initialData, userName, signOutPath, legacyImportAction }: { initialData: DashboardData; userName: string; signOutPath: string; legacyImportAction: (previous: LegacyImportResult, formData: FormData) => Promise<LegacyImportResult> }) {
   const [data, setData] = useState(initialData);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -113,14 +81,28 @@ export default function Dashboard({ initialData, userName, signOutPath, legacyIm
 
   async function savePhoto(formData: FormData) {
     const photo = formData.get("photo");
-    if (photo instanceof File && photo.size > 20 * 1024 * 1024) {
+    if (!(photo instanceof File) || photo.size === 0) {
+      toast.error("올릴 사진을 선택해주세요.");
+      return;
+    }
+    if (photo.size > 20 * 1024 * 1024) {
       toast.error("사진은 20MB 이하로 올려주세요.");
       return;
     }
     setSaving(true);
     try {
-      if (photo instanceof File) formData.set("photo", await makeUploadPhoto(photo));
-      const response = await fetch("/api/album", { method: "POST", body: formData });
+      const uploadRequest = await fetch("/api/upload-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: photo.name, contentType: photo.type, size: photo.size }) });
+      const uploadDetails = await uploadRequest.json().catch(() => null) as { error?: string; imageKey?: string; uploadUrl?: string; contentType?: string } | null;
+      if (!uploadRequest.ok || !uploadDetails?.imageKey || !uploadDetails.uploadUrl || !uploadDetails.contentType) {
+        toast.error(uploadDetails?.error ?? "원본 사진 업로드를 준비하지 못했어요.");
+        return;
+      }
+      const upload = await fetch(uploadDetails.uploadUrl, { method: "PUT", headers: { "content-type": uploadDetails.contentType }, body: photo });
+      if (!upload.ok) {
+        toast.error("원본 사진 파일을 저장하지 못했어요.");
+        return;
+      }
+      const response = await fetch("/api/album", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageKey: uploadDetails.imageKey, caption: formData.get("caption"), takenAt: formData.get("takenAt"), milestone: formData.get("milestone"), isPublic: formData.get("isPublic") === "true" }) });
       if (!response.ok) {
         const result = await response.json().catch(() => null) as { error?: string } | null;
         toast.error(result?.error ?? `사진을 저장하지 못했어요. (오류 ${response.status})`);
