@@ -91,7 +91,7 @@ export default function Dashboard({ initialData, userName, signOutPath, legacyIm
     }
     setSaving(true);
     try {
-      const uploadRequest = await fetch("/api/upload-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: photo.name, contentType: photo.type, size: photo.size }) });
+      const uploadRequest = await fetch("/dashboard/upload-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: photo.name, contentType: photo.type, size: photo.size }) });
       const uploadDetails = await uploadRequest.json().catch(() => null) as { error?: string; imageKey?: string; uploadUrl?: string; contentType?: string } | null;
       if (!uploadRequest.ok || !uploadDetails?.imageKey || !uploadDetails.uploadUrl || !uploadDetails.contentType) {
         toast.error(uploadDetails?.error ?? "원본 사진 업로드를 준비하지 못했어요.");
@@ -102,7 +102,7 @@ export default function Dashboard({ initialData, userName, signOutPath, legacyIm
         toast.error("원본 사진 파일을 저장하지 못했어요.");
         return;
       }
-      const response = await fetch("/api/album", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageKey: uploadDetails.imageKey, caption: formData.get("caption"), takenAt: formData.get("takenAt"), milestone: formData.get("milestone"), isPublic: formData.get("isPublic") === "true" }) });
+      const response = await fetch("/dashboard/upload-complete", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageKey: uploadDetails.imageKey, caption: formData.get("caption"), takenAt: formData.get("takenAt"), milestone: formData.get("milestone"), isPublic: formData.get("isPublic") === "true" }) });
       if (!response.ok) {
         const result = await response.json().catch(() => null) as { error?: string } | null;
         toast.error(result?.error ?? `사진을 저장하지 못했어요. (오류 ${response.status})`);
