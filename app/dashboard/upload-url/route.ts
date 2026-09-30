@@ -1,7 +1,5 @@
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { ensureCat } from "@/lib/data";
-import { env } from "cloudflare:workers";
-import { AwsClient } from "aws4fetch";
 import { NextResponse } from "next/server";
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -29,18 +27,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "JPG·PNG·HEIC 등 20MB 이하 사진만 올릴 수 있어요." }, { status: 400 });
   }
 
-  const accountId = env.R2_ACCOUNT_ID;
-  const accessKeyId = env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = env.R2_SECRET_ACCESS_KEY;
-  if (!accountId || !accessKeyId || !secretAccessKey) {
-    return NextResponse.json({ error: "원본 사진 업로드 설정이 아직 완료되지 않았어요." }, { status: 503 });
-  }
-
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const imageKey = `${cat.id}/${crypto.randomUUID()}-${safeName}`;
-  const url = new URL(`https://${accountId}.r2.cloudflarestorage.com/nyangtori-photos/${imageKey.split("/").map(encodeURIComponent).join("/")}`);
-  url.searchParams.set("X-Amz-Expires", "300");
-  const signer = new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: "auto" });
-  const signed = await signer.sign(new Request(url, { method: "PUT", headers: { "content-type": contentType } }), { aws: { signQuery: true } });
-  return NextResponse.json({ imageKey, uploadUrl: signed.url, contentType });
+  return NextResponse.json({
+    imageKey: `${cat.id}/${crypto.randomUUID()}-${safeName}`,
+    contentType,
+  });
 }
