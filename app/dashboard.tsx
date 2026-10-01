@@ -39,7 +39,7 @@ function ageLabel(birthDate: string) {
   return `태어난 지 ${days}일`;
 }
 
-export default function Dashboard({ initialData, userName, signOutPath, legacyImportAction }: { initialData: DashboardData; userName: string; signOutPath: string; legacyImportAction: (previous: LegacyImportResult, formData: FormData) => Promise<LegacyImportResult> }) {
+export default function Dashboard({ initialData, userName, signOutPath, legacyImportAction, uploadToken }: { initialData: DashboardData; userName: string; signOutPath: string; legacyImportAction: (previous: LegacyImportResult, formData: FormData) => Promise<LegacyImportResult>; uploadToken: string }) {
   const [data, setData] = useState(initialData);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<keyof typeof logMeta>("meal");
@@ -91,19 +91,19 @@ export default function Dashboard({ initialData, userName, signOutPath, legacyIm
     }
     setSaving(true);
     try {
-      const uploadRequest = await fetch("/dashboard/upload-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fileName: photo.name, contentType: photo.type, size: photo.size }) });
+      const uploadRequest = await fetch("/dashboard/upload-url", { method: "POST", headers: { "content-type": "application/json", "x-nyang-upload-token": uploadToken }, body: JSON.stringify({ fileName: photo.name, contentType: photo.type, size: photo.size }) });
       const uploadDetails = await uploadRequest.json().catch(() => null) as { error?: string; imageKey?: string; contentType?: string } | null;
       if (!uploadRequest.ok || !uploadDetails?.imageKey || !uploadDetails.contentType) {
         toast.error(uploadDetails?.error ?? "원본 사진 업로드를 준비하지 못했어요.");
         return;
       }
-      const upload = await fetch(`/dashboard/upload-file?imageKey=${encodeURIComponent(uploadDetails.imageKey)}`, { method: "PUT", headers: { "content-type": uploadDetails.contentType }, body: photo });
+      const upload = await fetch(`/dashboard/upload-file?imageKey=${encodeURIComponent(uploadDetails.imageKey)}`, { method: "PUT", headers: { "content-type": uploadDetails.contentType, "x-nyang-upload-token": uploadToken }, body: photo });
       if (!upload.ok) {
         const result = await upload.json().catch(() => null) as { error?: string } | null;
         toast.error(result?.error ?? "원본 사진 파일을 저장하지 못했어요.");
         return;
       }
-      const response = await fetch("/dashboard/upload-complete", { method: "POST", headers: { "content-type": "application/json; charset=utf-8" }, body: JSON.stringify({ imageKey: uploadDetails.imageKey, captionEncoded: encodeURIComponent(String(formData.get("caption") ?? "")), takenAt: formData.get("takenAt"), milestoneEncoded: encodeURIComponent(String(formData.get("milestone") ?? "")), isPublic: formData.get("isPublic") === "true" }) });
+      const response = await fetch("/dashboard/upload-complete", { method: "POST", headers: { "content-type": "application/json; charset=utf-8", "x-nyang-upload-token": uploadToken }, body: JSON.stringify({ imageKey: uploadDetails.imageKey, captionEncoded: encodeURIComponent(String(formData.get("caption") ?? "")), takenAt: formData.get("takenAt"), milestoneEncoded: encodeURIComponent(String(formData.get("milestone") ?? "")), isPublic: formData.get("isPublic") === "true" }) });
       if (!response.ok) {
         const result = await response.json().catch(() => null) as { error?: string } | null;
         toast.error(result?.error ?? `사진을 저장하지 못했어요. (오류 ${response.status})`);
