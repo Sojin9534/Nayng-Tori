@@ -1,4 +1,4 @@
-import { getChatGPTUser } from "@/app/chatgpt-auth";
+import { getUploadUserId } from "@/lib/upload-auth";
 import { ensureCat } from "@/lib/data";
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
@@ -6,10 +6,10 @@ import { NextResponse } from "next/server";
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 export async function PUT(request: Request) {
-  const user = await getChatGPTUser();
-  if (!user) return NextResponse.json({ error: "로그인이 필요합니다. 대시보드를 새로고침한 뒤 다시 시도해주세요." }, { status: 401 });
-  const cat = await ensureCat(user.userId);
-  if (cat.owner_id !== user.userId) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+  const userId = await getUploadUserId(request);
+  if (!userId) return NextResponse.json({ error: "로그인 확인이 만료됐어요. 대시보드를 새로고침한 뒤 다시 시도해주세요." }, { status: 401 });
+  const cat = await ensureCat(userId);
+  if (cat.owner_id !== userId) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
 
   const imageKey = new URL(request.url).searchParams.get("imageKey") ?? "";
   const contentType = request.headers.get("content-type") ?? "";
