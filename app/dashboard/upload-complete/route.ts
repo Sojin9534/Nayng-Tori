@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   const cat = await ensureCat(user.userId);
   if (cat.owner_id !== user.userId) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
 
-  const body = await request.json().catch(() => null) as { imageKey?: unknown; caption?: unknown; takenAt?: unknown; milestone?: unknown; isPublic?: unknown } | null;
+  const body = await request.json().catch(() => null) as { imageKey?: unknown; captionEncoded?: unknown; takenAt?: unknown; milestoneEncoded?: unknown; isPublic?: unknown } | null;
   const imageKey = typeof body?.imageKey === "string" ? body.imageKey : "";
   if (!imageKey.startsWith(`${cat.id}/`)) return NextResponse.json({ error: "올바른 사진을 선택해주세요." }, { status: 400 });
 
@@ -18,9 +18,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "사진 업로드가 완료되지 않았어요. 다시 시도해주세요." }, { status: 400 });
   }
 
-  const caption = typeof body?.caption === "string" ? body.caption : "오늘의 토리";
+  const decodeText = (value: unknown, fallback: string) => {
+    if (typeof value !== "string") return fallback;
+    try { return decodeURIComponent(value); } catch { return fallback; }
+  };
+  const caption = decodeText(body?.captionEncoded, "오늘의 토리");
   const takenAt = typeof body?.takenAt === "string" ? body.takenAt : new Date().toISOString().slice(0, 10);
-  const milestone = typeof body?.milestone === "string" ? body.milestone : "";
+  const milestone = decodeText(body?.milestoneEncoded, "");
   const isPublic = body?.isPublic === true;
 
   try {
