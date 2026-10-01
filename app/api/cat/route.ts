@@ -1,5 +1,6 @@
 import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { ensureCat } from "@/lib/data";
+import { getUploadUserId } from "@/lib/upload-auth";
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 
@@ -14,10 +15,10 @@ function imageType(file: File) {
 }
 
 export async function PATCH(request: Request) {
-  const user = await getChatGPTUser();
-  if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-  const cat = await ensureCat(user.userId);
-  if (cat.owner_id !== user.userId) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+  const userId = (await getChatGPTUser())?.userId ?? await getUploadUserId(request);
+  if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  const cat = await ensureCat(userId);
+  if (cat.owner_id !== userId) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
 
   const form = await request.formData();
   const name = String(form.get("name") ?? "").trim();
@@ -41,6 +42,6 @@ export async function PATCH(request: Request) {
 
   await env.DB!.prepare(
     "UPDATE cats SET name = ?, birth_date = ?, breed = ?, bio = ?, profile_image_key = ? WHERE id = ? AND owner_id = ?",
-  ).bind(name, birthDate, breed, bio, profileImageKey, cat.id, user.userId).run();
+  ).bind(name, birthDate, breed, bio, profileImageKey, cat.id, userId).run();
   return NextResponse.json({ ok: true });
 }
