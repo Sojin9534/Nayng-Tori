@@ -122,7 +122,7 @@ export default function Dashboard({ initialData, userName, signOutPath, legacyIm
   async function saveProfile(formData: FormData) {
     setSaving(true);
     try {
-      const response = await fetch("/api/cat", { method: "PATCH", body: formData });
+      const response = await fetch("/api/cat", { method: "PATCH", headers: { "x-nyang-upload-token": uploadToken }, body: formData });
       if (!response.ok) return toast.error((await response.json()).error ?? "기본 정보를 저장하지 못했어요.");
       setProfileOpen(false);
       toast.success("기본 정보를 바꿨어요.");
