@@ -2,12 +2,14 @@ import { requireChatGPTUser, chatGPTSignOutPath } from "../chatgpt-auth";
 import { catImageUrl, getDashboard, imageUrl } from "@/lib/data";
 import DashboardView from "../dashboard";
 import { importLegacyAction } from "./actions";
+import { createUploadToken } from "@/lib/upload-auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const user = await requireChatGPTUser("/dashboard");
   const data = await getDashboard(user.userId);
+  const uploadToken = await createUploadToken(user.userId);
   return (
     <DashboardView
       initialData={{
@@ -20,6 +22,7 @@ export default async function DashboardPage() {
       userName={user.fullName ?? user.email.split("@")[0]}
       signOutPath={chatGPTSignOutPath("/album/tori")}
       legacyImportAction={importLegacyAction}
+      uploadToken={uploadToken}
     />
   );
 }
