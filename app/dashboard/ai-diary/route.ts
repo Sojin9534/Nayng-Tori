@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 
 const MAX_IMAGE_BASE64_LENGTH = 3_500_000;
+const GEMINI_MODEL = "gemini-3.1-flash-lite";
 
 function parseSuggestions(text: string) {
   const json = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
   ].join("\n");
 
   const geminiResponse = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
     {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
@@ -55,7 +56,13 @@ export async function POST(request: Request) {
   );
 
   if (!geminiResponse.ok) {
-    return NextResponse.json({ error: "AI가 지금은 문구를 만들지 못했어요. 잠시 후 다시 눌러주세요." }, { status: 502 });
+    if (geminiResponse.status === 401 || geminiResponse.status === 403) {
+      return NextResponse.json({ error: "Gemini API 키 권한을 확인해주세요." }, { status: 502 });
+    }
+    if (geminiResponse.status === 429) {
+      return NextResponse.json({ error: "AI 추천 횟수가 잠시 한도에 도달했어요. 잠시 후 다시 눌러주세요." }, { status: 429 });
+    }
+    return NextResponse.json({ error: "AI 문구 추천 설정에 문제가 있어요. 잠시 후 다시 눌러주세요." }, { status: 502 });
   }
 
   const gemini = await geminiResponse.json().catch(() => null) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> } | null;
