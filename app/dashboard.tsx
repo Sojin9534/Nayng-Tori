@@ -50,14 +50,14 @@ function base64Data(blob: Blob) {
 
 async function diaryPreview(photo: File) {
   const image = await createImageBitmap(photo);
-  const maxSide = 1280;
+  const maxSide = 720;
   const ratio = Math.min(1, maxSide / Math.max(image.width, image.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(image.width * ratio));
   canvas.height = Math.max(1, Math.round(image.height * ratio));
   canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
   image.close();
-  const preview = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.8));
+  const preview = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.7));
   if (!preview) throw new Error("사진을 준비하지 못했어요.");
   return { imageData: await base64Data(preview), mimeType: "image/jpeg" };
 }
