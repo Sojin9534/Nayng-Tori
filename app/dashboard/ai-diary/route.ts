@@ -8,7 +8,7 @@ const WORKERS_AI_MODEL = "@cf/llava-hf/llava-1.5-7b-hf";
 type WorkersAiBinding = {
   run: (
     model: string,
-    input: { image: Uint8Array; prompt: string; max_tokens: number },
+    input: { image: number[]; prompt: string; max_tokens: number },
   ) => Promise<{ description?: unknown }>;
 };
 
@@ -74,12 +74,17 @@ export async function POST(request: Request) {
   let aiResponse: { description?: unknown };
   try {
     aiResponse = await ai.run(WORKERS_AI_MODEL, {
-      image: decodeBase64(body.imageData),
+      image: Array.from(decodeBase64(body.imageData)),
       prompt,
       max_tokens: 180,
     });
-  } catch {
-    return NextResponse.json({ error: "AI가 지금은 문구를 만들지 못했어요. 잠시 후 다시 눌러주세요." }, { status: 502 });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message.replace(/\s+/g, " ").slice(0, 180) : "";
+    return NextResponse.json({
+      error: detail
+        ? `Workers AI 오류: ${detail}`
+        : "AI가 지금은 문구를 만들지 못했어요. 잠시 후 다시 눌러주세요.",
+    }, { status: 502 });
   }
 
   const text = typeof aiResponse.description === "string" ? aiResponse.description : "";
