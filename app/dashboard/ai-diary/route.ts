@@ -55,13 +55,15 @@ export async function POST(request: Request) {
   );
 
   if (!geminiResponse.ok) {
+    const providerError = await geminiResponse.json().catch(() => null) as { error?: { message?: unknown } } | null;
+    const detail = typeof providerError?.error?.message === "string" ? providerError.error.message.replace(/\\s+/g, " ").slice(0, 180) : "";
     if (geminiResponse.status === 401 || geminiResponse.status === 403) {
       return NextResponse.json({ error: "Gemini API 키 권한을 확인해주세요." }, { status: 502 });
     }
     if (geminiResponse.status === 429) {
       return NextResponse.json({ error: "AI 추천 횟수가 잠시 한도에 도달했어요. 잠시 후 다시 눌러주세요." }, { status: 429 });
     }
-    return NextResponse.json({ error: "AI 문구 추천 설정에 문제가 있어요. 잠시 후 다시 눌러주세요." }, { status: 502 });
+    return NextResponse.json({ error: detail ? `Gemini 오류 ${geminiResponse.status}: ${detail}` : `Gemini 오류 ${geminiResponse.status}가 발생했어요.` }, { status: 502 });
   }
 
   const gemini = await geminiResponse.json().catch(() => null) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> } | null;
